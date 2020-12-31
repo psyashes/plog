@@ -10,7 +10,7 @@
     <div>
       {% for entry in entries %}
       <div>
-        <div>id: {{ entry.id }}, text: {{ entry.text }}</div>
+        <div>id: {{ entry.id }}, text: {{ entry.text }}, created_at: {{ entry.created_at }}</div>
         <form action="delete", method="post">
           <input type="hidden" name="id" value="{{ entry.id }}">
           <button>delete</button>

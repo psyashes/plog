@@ -29,7 +29,7 @@ impl ResponseError for MyError {}
 struct ProgressLog {
     id: u32,
     text: String,
-    created_at: DateTime<Local>,
+    created_at: String,
 }
 
 #[get("/")]

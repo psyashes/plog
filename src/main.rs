@@ -1,14 +1,27 @@
-use actix_web::{get, web, App, HttpResponse, HttpServer, ResponseError};
+use actix_web::{get, http::header, post, web, App, HttpResponse, HttpServer, ResponseError};
 use thiserror::Error;
 use askama::Template;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
+use serde::Deserialize;
+use chrono::{Local, DateTime};
+
+#[derive(Deserialize)]
+struct AddParams {
+    text: String,
+    created_at: String,
+}
+
+#[derive(Deserialize)]
+struct DeleteParams {
+    id: u32,
+}
 
 #[derive(Template)]
 #[template(path = "index.html")]
 struct IndexTemplate {
-    entries: Vec<ProgressLog>,
+    entries: Vec<LogEntry>,
 }
 
 #[derive(Error, Debug)]
@@ -25,10 +38,35 @@ enum MyError {
 
 impl ResponseError for MyError {}
 
-struct ProgressLog {
+struct LogEntry {
     id: u32,
     text: String,
     created_at: String,
+}
+
+#[post("/add")]
+async fn add_log(
+    params: web::Form<AddParams>,
+    db: web::Data<r2d2::Pool<SqliteConnectionManager>>,
+) -> Result<HttpResponse, MyError> {
+    let conn = db.get()?;
+    let now = String::from(Local::now().to_string());
+    conn.execute("INSERT INTO progress_logs (text, created_at) VALUES (?, ?)", &[&params.text, &now])?;
+    Ok(HttpResponse::SeeOther()
+       .header(header::LOCATION, "/")
+       .finish())
+}
+
+#[post("/delete")]
+async fn delete_log(
+    params: web::Form<DeleteParams>,
+    db: web::Data<r2d2::Pool<SqliteConnectionManager>>,
+) -> Result<HttpResponse, MyError> {
+    let conn = db.get()?;
+    conn.execute("DELETE FROM progress_logs WHERE id=?", &[&params.id])?;
+    Ok(HttpResponse::SeeOther()
+       .header(header::LOCATION, "/")
+       .finish())
 }
 
 #[get("/")]
@@ -39,7 +77,7 @@ async fn index(db: web::Data<Pool<SqliteConnectionManager>>) -> Result<HttpRespo
         let id = row.get(0)?;
         let text = row.get(1)?;
         let created_at = row.get(2)?;
-        Ok(ProgressLog { id, text, created_at })
+        Ok(LogEntry { id, text, created_at })
     })?;
 
     let mut entries = Vec::new();

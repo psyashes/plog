@@ -5,12 +5,11 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
 use serde::Deserialize;
-use chrono::{Local, DateTime};
+use chrono::{Local};
 
 #[derive(Deserialize)]
 struct AddParams {
     text: String,
-    created_at: String,
 }
 
 #[derive(Deserialize)]
@@ -108,9 +107,15 @@ async fn main() -> Result<(), actix_web::Error> {
     )
     .expect("Failed to create a table `progress_logs`.");
 
-    HttpServer::new(move || App::new().service(index).data(pool.clone()))
-        .bind("0.0.0.0:8080")?
-        .run()
-        .await?;
+    HttpServer::new(move || {
+        App::new()
+            .service(index)
+            .service(add_log)
+            .service(delete_log)
+            .data(pool.clone())
+    })
+    .bind("0.0.0.0:8080")?
+    .run()
+    .await?;
     Ok(())
 }
